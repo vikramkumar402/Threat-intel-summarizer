@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threat Intelligence Summarizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {} }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="app"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let token = localStorage.getItem('token');
+        let currentPage = 'login';
+
+        // API Functions
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            
+            const options = { method, headers };
+            if (body) options.body = JSON.stringify(body);
+            
+            const response = await fetch(`${API_BASE}${endpoint}`, options);
+            if (!response.ok) throw new Error(await response.text());
+            return response.json();
+        }
+
+        // Pages
+        function renderLogin() {
+            return `
+                <div class="min-h-screen flex items-center justify-center px-4">
+                    <div class="max-w-md w-full bg-gray-800 rounded-lg shadow-xl p-8">
+                        <div class="text-center mb-8">
+                            <h1 class="text-3xl font-bold mb-2">🛡️ Threat Intel</h1>
+                            <p class="text-gray-400">Daily Security Intelligence Platform</p>
+                        </div>
+                        <div id="error" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded mb-4"></div>
+                        <div id="success" class="hidden bg-green-900/50 border border-green-500 text-green-200 px-4 py-3 rounded mb-4"></div>
+                        <form id="authForm" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                                <input type="email" id="email" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                                <input type="password" id="password" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                <span id="btnText">Login</span>
+                            </button>
+                        </form>
+                        <div class="text-center mt-4">
+                            <button id="toggleAuth" class="text-purple-400 hover:text-purple-300 text-sm">
+                                Need an account? Register
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDashboard(data) {
+            const brief = data.brief || {};
+            const items = data.items || [];
+            
+            return `
+                <nav class="bg-gray-800 border-b border-gray-700">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div class="flex justify-between h-16">
+                            <div class="flex items-center space-x-8">
+                                <span class="text-2xl font-bold">🛡️ Threat Intel</span>
+                                <button onclick="loadPage('dashboard')" class="px-3 py-2 rounded-md text-sm font-medium bg-gray-900 text-white">Dashboard</button>
+                                <button onclick="loadPage('intel')" class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">Raw Feed</button>
+                            </div>
+                            <div class="flex items-center">
+                                <button onclick="logout()" class="text-gray-300 hover:text-white">Logout</button>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+                
+                <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div class="space-y-6">
+                        <div class="flex justify-between items-center">
+                            <h1 class="text-3xl font-bold">Dashboard</h1>
+                            <button onclick="triggerScrape()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                                🔄 Trigger Scrape
+                            </button>
+                        </div>
+                        
+                        ${brief.summary_md ? `
+                            <div class="bg-gray-800 rounded-lg p-6">
+                                <h2 class="text-xl font-bold text-purple-400 mb-4">Executive Summary</h2>
+                                <p class="text-gray-300">${brief.summary_md}</p>
+                            </div>
+                        ` : `
+                            <div class="bg-yellow-900/50 border border-yellow-500 text-yellow-200 px-4 py-3 rounded">
+                                <strong>No brief available yet.</strong> Click "Trigger Scrape" to collect intelligence data.
+                                <br><small>Note: AI brief generation requires AWS Bedrock credentials.</small>
+                            </div>
+                        `}
+                        
+                        <div class="bg-gray-800 rounded-lg p-6">
+                            <h2 class="text-xl font-bold text-purple-400 mb-4">Recent Intelligence (${items.length} items)</h2>
+                            ${items.length > 0 ? `
+                                <div class="space-y-3">
+                                    ${items.slice(0, 10).map(item => `
+                                        <div class="bg-gray-700 rounded p-4">
+                                            <div class="flex items-center gap-3 mb-2">
+                                                <span class="px-2 py-1 rounded text-xs font-semibold ${getSeverityColor(item.severity)}">${item.severity}</span>
+                                                <span class="text-purple-400 text-sm font-semibold">${item.source}</span>
+                                                <span class="text-gray-500 text-sm">${new Date(item.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <h3 class="text-white font-semibold mb-1">${item.title}</h3>
+                                            <p class="text-gray-400 text-sm">${item.raw_text?.substring(0, 150)}...</p>
+                                            <a href="${item.url}" target="_blank" class="text-purple-400 hover:text-purple-300 text-sm">View Source →</a>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : '<p class="text-gray-400">No intelligence items yet. Trigger a scrape to collect data.</p>'}
+                        </div>
+                    </div>
+                </main>
+            `;
+        }
+
+        function getSeverityColor(severity) {
+            const colors = {
+                'CRITICAL': 'bg-red-600 text-white',
+                'HIGH': 'bg-orange-600 text-white',
+                'MEDIUM': 'bg-yellow-600 text-white',
+                'LOW': 'bg-blue-600 text-white'
+            };
+            return colors[severity] || 'bg-gray-600 text-white';
+        }
+
+        // Event Handlers
+        async function handleAuth(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const isRegister = document.getElementById('btnText').textContent === 'Register';
+            
+            try {
+                if (isRegister) {
+                    await apiCall('/auth/register', 'POST', { email, password });
+                    showMessage('success', 'Registration successful! Logging in...');
+                }
+                
+                const response = await apiCall('/auth/login', 'POST', { email, password });
+                token = response.access_token;
+                localStorage.setItem('token', token);
+                await loadPage('dashboard');
+            } catch (error) {
+                showMessage('error', error.message);
+            }
+        }
+
+        function toggleAuthMode() {
+            const btnText = document.getElementById('btnText');
+            const toggleBtn = document.getElementById('toggleAuth');
+            if (btnText.textContent === 'Login') {
+                btnText.textContent = 'Register';
+                toggleBtn.textContent = 'Already have an account? Login';
+            } else {
+                btnText.textContent = 'Login';
+                toggleBtn.textContent = 'Need an account? Register';
+            }
+        }
+
+        async function triggerScrape() {
+            try {
+                await apiCall('/intel/scrape', 'POST');
+                alert('Scraping started! This will take 10-30 seconds. Refresh the page to see results.');
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            token = null;
+            loadPage('login');
+        }
+
+        function showMessage(type, message) {
+            const el = document.getElementById(type);
+            el.textContent = message;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        // Page Loader
+        async function loadPage(page) {
+            currentPage = page;
+            const app = document.getElementById('app');
+            
+            if (page === 'login') {
+                app.innerHTML = renderLogin();
+                document.getElementById('authForm').addEventListener('submit', handleAuth);
+                document.getElementById('toggleAuth').addEventListener('click', toggleAuthMode);
+            } else if (page === 'dashboard') {
+                try {
+                    const [briefRes, itemsRes] = await Promise.allSettled([
+                        apiCall('/briefs/latest'),
+                        apiCall('/intel/items?limit=50')
+                    ]);
+                    
+                    const data = {
+                        brief: briefRes.status === 'fulfilled' ? briefRes.value : null,
+                        items: itemsRes.status === 'fulfilled' ? itemsRes.value : []
+                    };
+                    
+                    app.innerHTML = renderDashboard(data);
+                } catch (error) {
+                    app.innerHTML = renderDashboard({});
+                }
+            }
+        }
+
+        // Initialize
+        window.onload = () => {
+            if (token) {
+                loadPage('dashboard');
+            } else {
+                loadPage('login');
+            }
+        };
+    </script>
+</body>
+</html>

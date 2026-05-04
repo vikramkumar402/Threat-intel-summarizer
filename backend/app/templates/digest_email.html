@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Threat Intelligence Brief</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f4f4; }
+        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; margin: -30px -30px 20px -30px; }
+        h1 { margin: 0; font-size: 24px; }
+        .date { font-size: 14px; opacity: 0.9; margin-top: 5px; }
+        .section { margin-bottom: 30px; }
+        .section-title { color: #667eea; font-size: 18px; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #667eea; padding-bottom: 5px; }
+        .cve-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .cve-table th { background-color: #667eea; color: white; padding: 10px; text-align: left; }
+        .cve-table td { padding: 10px; border-bottom: 1px solid #ddd; }
+        .cve-table tr:hover { background-color: #f5f5f5; }
+        .severity-critical { color: #dc3545; font-weight: bold; }
+        .severity-high { color: #fd7e14; font-weight: bold; }
+        .severity-medium { color: #ffc107; font-weight: bold; }
+        .severity-low { color: #17a2b8; font-weight: bold; }
+        .theme-tag { display: inline-block; background-color: #e9ecef; padding: 5px 10px; margin: 5px 5px 5px 0; border-radius: 4px; font-size: 14px; }
+        .recommendation { margin-bottom: 10px; padding-left: 20px; }
+        .alert-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        .alert-critical { background-color: #f8d7da; border-left-color: #dc3545; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; text-align: center; }
+        .unsubscribe { color: #667eea; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Daily Threat Intelligence Brief</h1>
+            <div class="date">{{ date }}</div>
+        </div>
+
+        {% if high_priority_flags %}
+        <div class="alert-box alert-critical">
+            <strong>⚠️ High Priority Alerts:</strong>
+            <ul>
+                {% for flag in high_priority_flags %}
+                <li>{{ flag }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="section">
+            <div class="section-title">Executive Summary</div>
+            <p>{{ executive_summary }}</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Top 5 Critical CVEs</div>
+            <table class="cve-table">
+                <thead>
+                    <tr>
+                        <th>CVE ID</th>
+                        <th>CVSS</th>
+                        <th>Affected Products</th>
+                        <th>Impact</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cve in top_cves %}
+                    <tr>
+                        <td><strong>{{ cve.cve_id }}</strong></td>
+                        <td><span class="severity-{{ cve.severity|lower }}">{{ cve.cvss_score }}</span></td>
+                        <td>{{ cve.affected_products }}</td>
+                        <td>{{ cve.impact_summary }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Threat Themes</div>
+            <div>
+                {% for theme in threat_themes %}
+                <span class="theme-tag">{{ theme }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Defensive Recommendations</div>
+            <ol>
+                {% for rec in recommendations %}
+                <li class="recommendation">{{ rec }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated daily digest from your Threat Intelligence Summarizer.</p>
+            <p><a href="#" class="unsubscribe">Unsubscribe</a> | <a href="#" class="unsubscribe">Manage Settings</a></p>
+        </div>
+    </div>
+</body>
+</html>
