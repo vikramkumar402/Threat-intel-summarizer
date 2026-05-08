@@ -15,3 +15,11 @@ async def scrape_intel():
         "status": "success",
         "message": "Scrape endpoint working"
     }
+@router.get("/stats")
+async def stats():
+    return {
+        "items_collected": 0,
+        "critical": 0,
+        "high": 0,
+        "sources_active": 0
+    }
