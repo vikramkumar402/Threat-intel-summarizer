@@ -6,7 +6,12 @@ router = APIRouter(
 )
 
 @router.get("/latest")
-async def latest_brief():
+async def get_latest_brief():
     return {
-        "brief": "No brief yet"
+        "title": "Daily Intelligence Brief",
+        "summary": "Threat intelligence system operational.",
+        "items": [],
+        "critical": 0,
+        "high": 0,
+        "sources": 0
     }
