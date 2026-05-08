@@ -1,4 +1,4 @@
-```python
+
 """Intelligence items router."""
 from __future__ import annotations
 
